@@ -10,3 +10,8 @@ __PS:__ I'm trying to find why three star reviews have the most review length.
 
 Hypothesis:
 * People tend to give equal amount of pros and cons of a product, in 3 star reviews. This is the reason to that 3 star reviews are the longest.
+
+## Sentiment-Analysis
+Now I'm going to perform the sentiment analysis after perfectly cleaning and sorting the data(timestamp) [Please go through the cleaning data.ipynb to see what I've done].
+
+I've created very basic Bag of Words using scikit-learn's Count Vectorizer and down below are my obeservations:
