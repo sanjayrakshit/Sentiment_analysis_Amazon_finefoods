@@ -31,7 +31,7 @@ class Load_data:
             else:
                 Score[loc] = 0
 
-        return Score, Summary, Text
+        return Score, Summary.fillna["Not available"].tolist(), Text.fillna["Not available"].tolist()
 
     # Utility functions for preprocessing
 
@@ -91,6 +91,9 @@ class Load_data:
     def tokenify_list(self, row):
         for index in range(len(row)):
             row[index] = Tokenizer(string=row[index]).tokenify2()
+            row[index] = re.sub("<SOS>","",row[index])
+            row[index] = re.sub("<EOS>", "", row[index])
+            row[index] = re.sub(" +", " ", row[index])
 
         return row
 
