@@ -1,4 +1,10 @@
 # Sentiment Analysis
+
+### Important update: 
+Currently working on a Deep Learning model to analyse the Sentiment. Mainly using LSTMs which would learn the short as well as the long term dependency. 
+File name: LSTM_TF.ipynb
+
+
 This is the first big project that I've worked on during the course of machine learning. The dataset(Amazon fine food reviews) that I used was download from kaggel.
 
 There are 3 files here 
