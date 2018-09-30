@@ -112,14 +112,14 @@ tf.reset_default_graph()
 # defining the configuration
 # change the config parameters as per your wish
 config = {
-    'rnn_size': 1,
+    'rnn_size': 20,
     'rnn_layer': 1,
     'sequence_length': suitable_seq_len, # dont change
     'word_embedding_size': 300,
     'vocab_size': len(corpus)+2, # dont change
     'learning_rate': 3e-4,
     'batch_size': 128,
-    'epoch': 5,
+    'epoch': 20,
     'num_classes': len(y_train[0]), # dont change
     'dropout_lstm': .5,
     'dropout_dense': .5,
@@ -237,7 +237,8 @@ tf.trainable_variables()
 y_hats = model()
 
 with tf.name_scope('x_ent'):
-    cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=target, logits=y_hats)                         + tf.add_n([config['l2_reg_param']*tf.nn.l2_loss(V) for V in tf.trainable_variables()]))
+    cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=target, logits=y_hats)\
+    + tf.add_n([config['l2_reg_param']*tf.nn.l2_loss(V) for V in tf.trainable_variables()]))
     tf.summary.scalar('x_ent', cost)
 
 with tf.variable_scope('train_step', reuse=tf.AUTO_REUSE):
@@ -257,12 +258,13 @@ fig, ax = plt.subplots(1,1)
 # plt_dynamic([1,2], [1,2], [1,3], ax)
 
 
-# gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5) # Code to use 50% of GPU
+# gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.9) # Code to use 50% of GPU
 # sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-session_conf = tf.ConfigProto(      # Code to use only 1 thread of CPU
-      intra_op_parallelism_threads=1,
-      inter_op_parallelism_threads=1)
-sess = tf.Session(config=session_conf)
+sess = tf.Session()
+# session_conf = tf.ConfigProto(      # Code to use only 1 thread of CPU
+#       intra_op_parallelism_threads=1,
+#       inter_op_parallelism_threads=1)
+# sess = tf.Session(config=session_conf)
 
 some_time = str(time.time())
 
@@ -307,7 +309,7 @@ for i in range(config['epoch']):
     
     print('Train loss:', train_loss[-1])
     print('Validation loss:', test_loss[-1])
-    print('Validation error:', sess.run(accuracy, {data_x: X_test, target: y_test}))
+    print('Validation accuracy:', sess.run(accuracy, {data_x: X_test, target: y_test}))
     print('='*40)
     # plt_dynamic(range(i+1), test_loss, train_loss, ax)
 
