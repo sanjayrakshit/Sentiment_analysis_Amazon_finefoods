@@ -269,8 +269,9 @@ sess = tf.Session()
 some_time = str(time.time())
 
 summ = tf.summary.merge_all()
-writer_tr = tf.summary.FileWriter(f'./logs/train_{some_time}')
-writer_ts = tf.summary.FileWriter(f'./logs/val_{some_time}')
+name = f"{config['rnn_layer']}-{config['rnn_size']}"
+writer_tr = tf.summary.FileWriter(f'./logs/T_{name}_{some_time}')
+writer_ts = tf.summary.FileWriter(f'./logs/V_{name}_{some_time}')
 writer_tr.add_graph(sess.graph)
 
 sess.run(tf.global_variables_initializer())
