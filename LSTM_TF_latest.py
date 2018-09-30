@@ -160,7 +160,7 @@ def get_lstm_cell():
 
 def create_rnn():
     cell = tf.contrib.rnn.MultiRNNCell([get_lstm_cell() for _ in range(config['rnn_layer'])], state_is_tuple=True)
-    return cell
+    return tf.contrib.rnn.OutputProjectionWrapper(cell, output_size=1)
 
 
 # In[23]:
@@ -182,8 +182,8 @@ def model():
     CELL = create_rnn()
     with tf.variable_scope('model', reuse=tf.AUTO_REUSE):
         OUTPUT, FINAL_STATE = tf.nn.dynamic_rnn(CELL, embedded_words, dtype=tf.float32)
-    OUTPUT = tf.transpose(OUTPUT, [1,0,2]) # Step 1 to get the value from last time step
-    OUTPUT = tf.gather(OUTPUT, OUTPUT.get_shape()[0]-1) # Step 2 to get the value from last time step
+    # OUTPUT = tf.transpose(OUTPUT, [1,0,2]) # Step 1 to get the value from last time step
+    # OUTPUT = tf.gather(OUTPUT, OUTPUT.get_shape()[0]-1) # Step 2 to get the value from last time step
     
     # defining weight for dense layers
     
