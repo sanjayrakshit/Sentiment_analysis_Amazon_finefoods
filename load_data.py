@@ -1,130 +1,102 @@
-import pandas as pd
-import re
-import pickle
+import pickle, numpy as np, pandas as pd, re, string
+from collections import Counter
+from sklearn.model_selection import train_test_split
+from tqdm import tqdm
+from keras.preprocessing.sequence import pad_sequences
+
 import warnings
+warnings.filterwarnings('ignore')
 
-warnings.filterwarnings("ignore")
 
-from Tokenizer import Tokenizer # User defined class
 
 class Load_data:
-    def __init__(self, batch_size, data):
+    def __init__(self, batch_size, sequence_length, min_word_freq):
         self.batch_size = batch_size
-        self.data = data
+        self.sequence_length = sequence_length
+        self.min_word_freq = min_word_freq
+        self.wids = None
+        self.raw_data = pd.read_csv('Reviews.csv')
+        self.raw_data.dropna(inplace=True)
+        self.raw_data.drop_duplicates(subset=['Summary', 'Text', 'Score'], inplace=True)
+        # print(self.raw_data.shape)
+        self.raw_data = self.raw_data[self.raw_data['Score'] != 3]
+        # print(self.raw_data.shape)
 
-    def load_and_clean(self):
-        print ("The columns of the dataframe {}".format(self.data.columns))
-        print ("Shape with duplicates : {}".format(self.data.shape))
-        # dropping useless colums
-        imp_cols = set(self.data.columns)-{"Id","ProductId"}
-        print ("important columns : {}".format(imp_cols))
-        self.data = self.data.drop_duplicates(subset=imp_cols)
-        print("Shape without duplicates : {}".format(self.data.shape))
-        # don't want to deal with datapoints when Score = 3
-        self.data = self.data[self.data["Score"] != 3]
-        # keeping only concerned columns
-        Score = self.data["Score"].tolist(); Summary = self.data["Summary"];
-        Text = self.data["Text"]
-        for loc in range(len(Score)):
-            if Score[loc]>3:
-                Score[loc] = 1
-            else:
-                Score[loc] = 0
 
-        return Score, Summary.fillna["Not available"].tolist(), Text.fillna["Not available"].tolist()
+    def preprocess(self, x):
+        x = re.sub('<[^>]*>', '', x.lower())
+        for punc in string.punctuation:
+            if "\'" != punc:
+                x = x.replace(punc, f" {punc} ")
+        x = re.sub(" +", " ", x)
+        return x
 
-    # Utility functions for preprocessing
 
-    def make_lower(self, row):
-        return (list(map(lambda x: x.lower(), row)))
+    def create_ids(self):
+        # prepare word ids
+        print("Creating ids ....")
+        corpus = ""
+        for i, j in tqdm(zip(list(self.raw_data['Summary']), list(self.raw_data['Text'])), total=len(self.raw_data)):
+            corpus = corpus + self.preprocess(str(i) + " " + str(j) + " ")
+        tokens = dict(Counter(corpus.split()))
+        for i in list(tokens.keys()):
+            if tokens[i] < self.min_word_freq:
+                del tokens[i]
+        self.wids = {
+            item: index+2 for index, item in enumerate(tokens.keys())
+        }
 
-    def rem_html(self, row):
-        for index in range(len(row)):
-            try:
-                row[index] = re.sub("<[^>]*>", "", row[index])
-            except Exception as e:
-                print ("="*30)
-                print ("type", type(row[index]))
-                print ("Value", row[index])
-        return row
+    
+    def prepare_data(self):
+        # prepare data here
+        print("Preparing data ....")
+        xpart = [self.preprocess(str(i)+" "+str(j)) for i, j in \
+        tqdm(zip(list(self.raw_data['Summary']), list(self.raw_data['Text'])), total=len(self.raw_data))]
+        xpart = [
+            [self.wids.get(word, 1) for word in sen.split()] for sen in tqdm(xpart, total=len(xpart))
+        ]
+        xpart = pad_sequences(xpart, self.sequence_length)
+        ypart  = [np.array([1]) if item>3 else np.array([0]) for item in list(self.raw_data['Score'])]
+        self.whole_data = list(zip(xpart, ypart))
+        self.train, self.test = train_test_split(self.whole_data, test_size=0.15, random_state=101)
 
-    def de_abreviate(self, row):
-        with open("converter.DICTIONARY", "rb") as f:
-            converter = pickle.load(f)
-        for index in range(len(row)):
-            for key in converter.keys():
-                row[index] = re.sub(key, converter[key], row[index])
 
-        return row
 
-    def create_vocabulary(self, Text, Summary):
-        Text = " ".join(Text); Summary = " ".join(Summary)
-        ts = Text + " " + Summary
-        tobj = Tokenizer(string=ts)
-        tokenized_string = tobj.tokenify2()
-        tokens = set(tokenized_string.split())
-        voc = list(tokens); voc.sort()
-        with open("tokens.LIST", "w", encoding="latin") as fp:
-            fp.write("\n".join(voc))
-        word2ind, ind2word = dict(), dict()
-        for index in range(len(voc)):
-            word2ind[voc[index]] = index
-            ind2word[index] = voc[index]
 
-        return word2ind, ind2word
+    def get_train_batch(self, i):
+        temp = list(zip(*self.train[i*self.batch_size : (i+1)*self.batch_size]))
+        return temp[0], temp[1]
 
-    def convert2index(self, row, word2index):
-        for ind in range(len(row)):
-            word_list = row[ind].split()
-            for ind2 in range(len(word_list)):
-                try:
-                    word_list[ind2] = word2index[word_list[ind2]]
-                except Exception as e:
-                    print ("Exception occured ==== {}".format(e))
-                    print ("For word: {}".format(word_list[ind2]))
-                    print ("Row: {} ; Column: {}".format(ind, ind2))
-            #print (word_list)
-            row[ind] = word_list
 
-        return row
+    def get_test_batch(self, i):
+        temp = list(zip(*self.test[i*self.batch_size : (i+1)*self.batch_size]))
+        return temp[0], temp[1]
 
-    def tokenify_list(self, row):
-        for index in range(len(row)):
-            row[index] = Tokenizer(string=row[index]).tokenify2()
-            row[index] = re.sub("<SOS>","",row[index])
-            row[index] = re.sub("<EOS>", "", row[index])
-            row[index] = re.sub(" +", " ", row[index])
 
-        return row
+if __name__ == '__main__':
+    l = Load_data(batch_size=128, sequence_length=200, min_word_freq=5)       
+    l.create_ids()
+    l.prepare_data()
+    batch = l.get_train_batch(i=0)
+    print(batch)
 
-    def save_file(self, data, filename, is_binary=False, is_string=False, is_list=False, encoding="utf8"):
-        if is_binary:
-            with open(filename, "wb") as f:
-                pickle.dump(f,data)
-        elif is_string:
-            with open(filename, "w", encoding=encoding) as f:
-                f.write(data)
-        elif is_list:
-            with open(filename, "w", encoding=encoding) as f:
-                f.write("\n".join(data))
 
-if __name__ == "__main__":
-    data = pd.read_csv("Reviews.csv")
-    data_loader = Load_data(data=data, batch_size=None)
-    Score, Summary, Text = data_loader.load_and_clean()
 
-    Summary = Summary.fillna("Not available")
-    Text = data_loader.rem_html(row=Text.tolist())
-    Summary = data_loader.rem_html(row=Summary.tolist())
-    Text = data_loader.make_lower(row=Text)
-    Summary = data_loader.make_lower(row=Summary)
-    Text = data_loader.de_abreviate(row=Text)
-    Summary = data_loader.de_abreviate(row=Summary)
-    word2ind, ind2word = data_loader.create_vocabulary(Text=Text, Summary=Summary)
-    Text = data_loader.tokenify_list(row=Text)
-    Summary = data_loader.tokenify_list(row=Summary)
-    Text = data_loader.convert2index(row=Text, word2index=word2ind)
-    Summary = data_loader.convert2index(row=Summary, word2index=word2ind)
-    print ("Text: {}".format(Text[0]))
-    print ("Summary : {}".format(Summary[0]))
-    data_loader.save_file(data=(Summary,Text), filename="summarry&text.TUPLE", is_binary=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
