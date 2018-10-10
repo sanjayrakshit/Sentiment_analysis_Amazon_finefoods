@@ -5,6 +5,8 @@ Did Sentiment Analysis using Deep Learning. Used 2 layer LSTMs and got Accuracy 
 
 File name: [Architecture21.5.py](./Architecture21.5.py)
 
+![Alt text](./Accuracy.png?raw=true "Accuracy")
+
 
 This is the first big project that I've worked on during the course of machine learning. The dataset(Amazon fine food reviews) that I used was download from kaggel.
 
