@@ -7,6 +7,8 @@ File name: [Architecture21.5.py](./Architecture21.5.py)
 
 ![Alt text](./Accuracy.png?raw=true "Accuracy")
 
+![Alt text](./Cost.png?raw=true "Cost")
+
 
 This is the first big project that I've worked on during the course of machine learning. The dataset(Amazon fine food reviews) that I used was download from kaggel.
 
