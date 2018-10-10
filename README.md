@@ -1,7 +1,7 @@
 # Sentiment Analysis
 
 ### Important update: 
-Currently working on a Deep Learning model to analyse the Sentiment. Mainly using LSTMs which would learn the short as well as the long term dependency. 
+Did Sentiment Analysis using Deep Learning. Used 2 layer LSTMs and got Accuracy around 95% without using pretrained embeddings like W2V. My hypothesis is using Attention mechanism and pretrained embeddings would furthur increase the accuracy. Even 95% accuracy is very good.
 File name: [Architecture21.5.py](https://github.com/sanjayrakshit/Sentiment_analysis_Amazon_finefoods/blob/master/Architecture21.5.py)
 
 
