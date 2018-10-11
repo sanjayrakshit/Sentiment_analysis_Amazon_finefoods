@@ -3,11 +3,11 @@
 ### Important update: 
 Did Sentiment Analysis using Deep Learning. Used 2 layer LSTMs and got Accuracy around 95% without using pretrained embeddings like W2V. My hypothesis is using Attention mechanism and pretrained embeddings would furthur increase the accuracy. Even 95% accuracy is very good. Below is the link to Architecture file and also the Accuracy and Cost is given. Orange in for train data and blue is the validation data.
 
-File name: [Architecture21.5.py](./Architecture21.5.py)
+File name: [Architecture21.5.py](./src/Architecture21.5.py)
 
-![Alt text](./Accuracy.png?raw=true "Accuracy")
+![Alt text](./src/Accuracy.png?raw=true "Accuracy")
 
-![Alt text](./Cost.png?raw=true "Cost")
+![Alt text](./src/Cost.png?raw=true "Cost")
 
 
 This is the first big project that I've worked on during the course of machine learning. The dataset(Amazon fine food reviews) that I used was download from kaggel.
