@@ -76,20 +76,7 @@ def build_rnn(vocab_size, word_embedding_size, batch_size, rnn_cell_size, rnn_la
         dense = tf.contrib.layers.dropout(dense, keep_prob_dense)
         dense = tf.nn.leaky_relu(tf.add(tf.matmul(dense, w2), b2))
         dense = tf.contrib.layers.dropout(dense, keep_prob_dense)
-    # Create the fully connected layers
-    # with tf.name_scope("fully_connected"):
-        
-    #     # Initialize the weights and biases
-    #     # weights = tf.truncated_normal_initializer(stddev=0.1)
-    #     # biases = tf.zeros_initializer()
-        
-    #     dense = tf.contrib.layers.fully_connected(
-    #         inputs = outputs[:, -1],
-    #         num_outputs = dense_layer_size,
-    #         activation_fn = tf.nn.leaky_relu,
-    #         weights_initializer = tf.keras.initializers.he_normal(),
-    #         biases_initializer = tf.zeros_initializer())
-    #     dense = tf.contrib.layers.dropout(dense, keep_prob_dense)
+    
         
     # Make the predictions
     with tf.name_scope('predictions'):
@@ -98,20 +85,14 @@ def build_rnn(vocab_size, word_embedding_size, batch_size, rnn_cell_size, rnn_la
         
         predictions = tf.nn.sigmoid(tf.add(tf.matmul(dense, wp), bp))
         tf.summary.histogram('predictions', predictions)
-    # with tf.name_scope('predictions'):
-    #     predictions = tf.contrib.layers.fully_connected(dense, 
-    #                                                     num_outputs = num_classes, 
-    #                                                     activation_fn=tf.sigmoid,
-    #                                                     weights_initializer = tf.truncated_normal_initializer(),
-    #                                                     biases_initializer = tf.zeros_initializer())
-    #     tf.summary.histogram('predictions', predictions)
+
     
     # Calculate the cost
     print("Here are the trainable variables ....")
     print(*tf.trainable_variables(), sep='\n')
     with tf.name_scope('cost'):
         cost = tf.losses.mean_squared_error(labels, predictions) +\
-        tf.reduce_mean([l2_reg_const*tf.nn.l2_loss(t) for t in tf.trainable_variables()])
+        tf.reduce_mean([l2_reg_const*tf.nn.l2_loss(t) for t in tf.trainable_variables() if t.name.startswith('w')])
         tf.summary.scalar('cost', cost)
     
     # Train the model
@@ -121,6 +102,7 @@ def build_rnn(vocab_size, word_embedding_size, batch_size, rnn_cell_size, rnn_la
     # Determine the accuracy
     with tf.name_scope("accuracy"):
         correct_pred = tf.equal(tf.cast(tf.round(predictions), tf.int32), labels)
+        incorr_pred = tf.not_equal(tf.cast(tf.round(predictions), tf.int32), labels)
         accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
         tf.summary.scalar('accuracy', accuracy)
     
@@ -129,7 +111,7 @@ def build_rnn(vocab_size, word_embedding_size, batch_size, rnn_cell_size, rnn_la
 
     # Export the nodes 
     export_nodes = ['inputs', 'labels', 'keep_prob', 'keep_prob_dense', 'initial_state', 'final_state','accuracy',
-                    'predictions', 'cost', 'optimizer', 'merged']
+                    'predictions', 'cost', 'optimizer', 'merged', 'incorr_pred']
     Graph = namedtuple('Graph', export_nodes)
     local_dict = locals()
     graph = Graph(*[local_dict[each] for each in export_nodes])
@@ -171,7 +153,7 @@ def train(model, epochs, log_string):
             val_loss = []
             
             for i in tqdm(range(no_of_tr_batches), total=no_of_tr_batches):
-                x, y = load.get_train_batch(i=i)
+                sentences, x, y = load.get_train_batch(i=i)
                 feed = {model.inputs: x,
                         model.labels: y,
                         model.keep_prob: keepprob_lstm,
@@ -199,18 +181,22 @@ def train(model, epochs, log_string):
 
             val_state = sess.run(model.initial_state)
             for i in tqdm(range(no_of_ts_batches), total=no_of_ts_batches):
-                x, y = load.get_test_batch(i=i)
+                sentences, x, y = load.get_test_batch(i=i)
                 feed = {model.inputs: x,
                         model.labels: y,
                         model.keep_prob: 1,
                         model.keep_prob_dense: 1,
                         model.initial_state: val_state}
-                summary, batch_loss, batch_acc, val_state = sess.run([model.merged, 
+                summary, batch_loss, batch_acc, val_state, analytics = sess.run([model.merged, 
                                                                         model.cost, 
                                                                         model.accuracy, 
-                                                                        model.final_state], 
+                                                                        model.final_state,
+                                                                        model.incorr_pred], 
                                                                         feed_dict=feed)
                 
+                analytics = sess.run(tf.cast(analytics, tf.int32))
+                with open('./analytics/'+str(time.time()), 'w') as f:
+                    f.write('\n=============\n'.join([i*j for i,j in zip(sentences, analytics) if (i*j).strip()]))
                 # Record the validation loss and accuracy of each epoch
                 val_loss.append(batch_loss)
                 val_acc.append(batch_acc)
