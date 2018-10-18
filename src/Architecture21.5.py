@@ -23,7 +23,7 @@ vocab_size = len(load.wids) + 2
 
 
 def make_lstm_cell(rnn_cell_size, keep_prob):
-    lstm = tf.contrib.rnn.BasicLSTMCell(rnn_cell_size)
+    lstm = tf.nn.rnn_cell.LSTMCell(rnn_cell_size)
     drop = tf.contrib.rnn.DropoutWrapper(lstm, output_keep_prob=keep_prob)
     return drop
 
@@ -226,7 +226,7 @@ def train(model, epochs, log_string):
             if avg_valid_loss > min(valid_loss_summary):
                 print("No Improvement.")
                 stop_early += 1
-                if stop_early == 3:
+                if stop_early == 5:
                     break   
             
             # Reset stop_early if the validation loss finds a new low
