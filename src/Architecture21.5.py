@@ -118,8 +118,8 @@ def build_rnn(vocab_size, word_embedding_size, batch_size, rnn_cell_size, rnn_la
     
     return graph
 
-no_of_tr_batches = int(len(load.train)/batch_size)
-no_of_ts_batches = int(len(load.test)/batch_size)
+no_of_tr_batches = len(load.train) // batch_size
+no_of_ts_batches = len(load.test) // batch_size
 
 def train(model, epochs, log_string):
     '''Train the RNN'''
@@ -180,6 +180,7 @@ def train(model, epochs, log_string):
             avg_train_acc = np.mean(train_acc) 
 
             val_state = sess.run(model.initial_state)
+            misclassified = []
             for i in tqdm(range(no_of_ts_batches), total=no_of_ts_batches):
                 sentences, x, y = load.get_test_batch(i=i)
                 feed = {model.inputs: x,
@@ -195,12 +196,17 @@ def train(model, epochs, log_string):
                                                                         feed_dict=feed)
                 
                 analytics = sess.run(tf.cast(analytics, tf.int32))
-                with open('./analytics/'+str(time.time()), 'w') as f:
-                    f.write('\n=============\n'.join([i*j for i,j in zip(sentences, analytics) if (i*j).strip()]))
+                analytics = analytics.reshape(len(analytics))
+                misclassified.extend([i*j for i,j in zip(sentences, analytics) if (i*j).strip()])
+                
                 # Record the validation loss and accuracy of each epoch
                 val_loss.append(batch_loss)
                 val_acc.append(batch_acc)
             
+            # Storing the misclassified points
+            with open(f'./analytics/{iteration}-{log_string}.txt', 'w') as f:
+                f.write('\n=================\n'.join(misclassified))
+
             # Average the validation loss and accuracy of each epoch
             avg_valid_loss = np.mean(val_loss)    
             avg_valid_acc = np.mean(val_acc)
