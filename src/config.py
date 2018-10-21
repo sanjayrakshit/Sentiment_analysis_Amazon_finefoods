@@ -11,7 +11,7 @@ rnn_layer_size = 2
 
 dense_layer_size = 128
 
-l2_reg_const = 0.001
+l2_reg_const = 0.01
 
 epochs = 20
 
@@ -19,3 +19,5 @@ learning_rate = 0.001
 
 keepprob_dense = 0.2
 keepprob_lstm = 0.2
+
+da = 100

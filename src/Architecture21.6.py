@@ -23,7 +23,7 @@ vocab_size = len(load.wids) + 2
 
 
 def make_lstm_cell(rnn_cell_size, keep_prob):
-    lstm = tf.contrib.rnn.BasicLSTMCell(rnn_cell_size)
+    lstm = tf.nn.rnn_cell.LSTMCell(rnn_cell_size)
     drop = tf.contrib.rnn.DropoutWrapper(lstm, output_keep_prob=keep_prob)
     return drop
 
@@ -36,7 +36,7 @@ def build_rnn(vocab_size, word_embedding_size, batch_size, rnn_cell_size, rnn_la
 
     # Declare placeholders we'll feed into the graph
     with tf.name_scope('inputs'):
-        inputs = tf.placeholder(tf.int32, [None, None], name='inputs')
+        inputs = tf.placeholder(tf.int32, [batch_size, sequence_length], name='inputs')
 
     with tf.name_scope('labels'):
         labels = tf.placeholder(tf.int32, [None, None], name='labels')
@@ -62,22 +62,40 @@ def build_rnn(vocab_size, word_embedding_size, batch_size, rnn_cell_size, rnn_la
         outputs, final_state = tf.nn.dynamic_rnn(cell, embed,
                                                  initial_state=initial_state)    
     
-    with tf.name_scope('FC_layers_self_defined'):
-        w1 = tf.get_variable(name='w1', shape=[outputs[:,-1].get_shape()[-1] ,dense_layer_size],\
-            initializer=tf.keras.initializers.he_normal())
-        b1 = tf.get_variable(name='b1', shape=[1 ,dense_layer_size],\
-            initializer=tf.zeros_initializer())
-        w2 = tf.get_variable(name='w2', shape=[dense_layer_size ,dense_layer_size],\
-            initializer=tf.keras.initializers.he_normal())
-        b2 = tf.get_variable(name='b2', shape=[1 ,dense_layer_size],\
-            initializer=tf.zeros_initializer())
+    # with tf.name_scope('FC_layers_self_defined'):
+    #     w1 = tf.get_variable(name='w1', shape=[outputs[:,-1].get_shape()[-1] ,dense_layer_size],\
+    #         initializer=tf.keras.initializers.he_normal())
+    #     b1 = tf.get_variable(name='b1', shape=[1 ,dense_layer_size],\
+    #         initializer=tf.zeros_initializer())
+    #     w2 = tf.get_variable(name='w2', shape=[dense_layer_size ,dense_layer_size],\
+    #         initializer=tf.keras.initializers.he_normal())
+    #     b2 = tf.get_variable(name='b2', shape=[1 ,dense_layer_size],\
+    #         initializer=tf.zeros_initializer())
         
-        dense = tf.nn.leaky_relu(tf.add(tf.matmul(outputs[:, -1], w1), b1))
-        dense = tf.contrib.layers.dropout(dense, keep_prob_dense)
-        dense = tf.nn.leaky_relu(tf.add(tf.matmul(dense, w2), b2))
-        dense = tf.contrib.layers.dropout(dense, keep_prob_dense)
+    #     dense = tf.nn.leaky_relu(tf.add(tf.matmul(outputs[:, -1], w1), b1))
+    #     dense = tf.contrib.layers.dropout(dense, keep_prob_dense)
+    #     dense = tf.nn.leaky_relu(tf.add(tf.matmul(dense, w2), b2))
+    #     dense = tf.contrib.layers.dropout(dense, keep_prob_dense)
     
-        
+    # Implement attention mechanism
+    with tf.name_scope('Attention_mechanism'):
+
+        # Equation 7
+        Wh = tf.get_variable('Wh', [batch_size, outputs.get_shape()[2],outputs.get_shape()[2]], initializer=tf.truncated_normal_initializer()) # the shape will be broadcasted so no need to worry
+        level1 = tf.matmul(Wh, tf.transpose(outputs, [0,2,1])) # because the paper expects the output to come in shape [dxN] but we have it in [Nxd]
+        Wv = tf.get_variable('Wv', [da,da], initializer=tf.truncated_normal_initializer())
+        va = tf.get_variable('va', [da,1], initializer=tf.truncated_normal_initializer())
+        level2 = tf.broadcast_to(tf.matmul(Wv, va), [batch_size, da, sequence_length])
+        M = tf.nn.tanh(tf.concat([level1, level2], 1))
+
+        # Equation 8
+        ww = tf.get_variable('ww', [batch_size, 1, outputs.get_shape()[2]+da], initializer=tf.truncated_normal_initializer())
+        alpha = tf.nn.softmax(tf.matmul(ww, M))
+
+        # Equation 9
+        r = tf.matmul(tf.transpose(outputs, [0,2,1]), tf.transpose(alpha, [0,2,1]))
+
+
     # Make the predictions
     with tf.name_scope('predictions'):
         wp = tf.get_variable('wp', shape=[dense_layer_size, num_classes], initializer=tf.truncated_normal_initializer())
@@ -226,7 +244,7 @@ def train(model, epochs, log_string):
             if avg_valid_loss > min(valid_loss_summary):
                 print("No Improvement.")
                 stop_early += 1
-                if stop_early == 3:
+                if stop_early == 5:
                     break   
             
             # Reset stop_early if the validation loss finds a new low
